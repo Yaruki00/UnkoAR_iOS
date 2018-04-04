@@ -14,6 +14,8 @@ class ViewController: UIViewController, ARSCNViewDelegate {
 
     @IBOutlet var sceneView: ARSCNView!
     
+    var planeNodes:[PlaneNode] = []
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -30,7 +32,8 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         sceneView.scene = scene
         
         self.addCatScene()
-        self.addPoopScene()
+//        self.addPoopScene()
+        self.addTapGesture()
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -38,6 +41,7 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         
         // Create a session configuration
         let configuration = ARWorldTrackingConfiguration()
+        configuration.planeDetection = .horizontal
 
         // Run the view's session
         sceneView.session.run(configuration)
@@ -80,9 +84,33 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         // Reset tracking and/or remove existing anchors if consistent tracking is required
         
     }
+    
+    func renderer(_ renderer: SCNSceneRenderer, didAdd node: SCNNode, for anchor: ARAnchor) {
+        DispatchQueue.main.async {
+            if let planeAnchor = anchor as? ARPlaneAnchor {
+                let panelNode = PlaneNode(anchor: planeAnchor)
+                panelNode.isDisplay = true
+                node.addChildNode(panelNode)
+                self.planeNodes.append(panelNode)
+            }
+        }
+    }
+    
+    func renderer(_ renderer: SCNSceneRenderer, didUpdate node: SCNNode, for anchor: ARAnchor) {
+        DispatchQueue.main.async {
+            if let planeAnchor = anchor as? ARPlaneAnchor, let planeNode = node.childNodes[0] as? PlaneNode {
+                planeNode.update(anchor: planeAnchor)
+            }
+        }
+    }
 }
 
 extension ViewController {
+    
+    private func addTapGesture() {
+        let tapRecognizer = UITapGestureRecognizer(target: self, action: #selector(addPoopScene(recognizer:)))
+        self.sceneView.addGestureRecognizer(tapRecognizer)
+    }
     
     private func addCatScene() {
         let scene = SCNScene(named: "art.scnassets/cat.scn")!
@@ -91,10 +119,18 @@ extension ViewController {
         self.sceneView.scene.rootNode.addChildNode(node)
     }
     
-    private func addPoopScene() {
-        let scene = SCNScene(named: "art.scnassets/nakpoop.scn")!
-        let node = scene.rootNode.childNode(withName: "Poop", recursively: true)!
-        node.position = SCNVector3(1, -1, -3)
-        self.sceneView.scene.rootNode.addChildNode(node)
+    @objc
+    private func addPoopScene(recognizer: UIGestureRecognizer) {
+        let touchLocation = recognizer.location(in: self.sceneView)
+        let hitTestResult = sceneView.hitTest(touchLocation, types: .existingPlaneUsingExtent)
+        if !hitTestResult.isEmpty {
+            let scene = SCNScene(named: "art.scnassets/nakpoop.scn")!
+            let node = scene.rootNode.childNode(withName: "Poop", recursively: true)!
+            node.physicsBody = SCNPhysicsBody(type: .dynamic, shape: SCNPhysicsShape(geometry: node.geometry!, options: nil))
+            node.physicsBody?.categoryBitMask = 1
+            let hitResult = hitTestResult.first!
+            node.position = SCNVector3(hitResult.worldTransform.columns.3.x, hitResult.worldTransform.columns.3.y + 0.5, hitResult.worldTransform.columns.3.z)
+            self.sceneView.scene.rootNode.addChildNode(node)
+        }
     }
 }
