@@ -28,6 +28,9 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         
         // Set the scene to the view
         sceneView.scene = scene
+        
+        self.addCatScene()
+        self.addPoopScene()
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -76,5 +79,22 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     func sessionInterruptionEnded(_ session: ARSession) {
         // Reset tracking and/or remove existing anchors if consistent tracking is required
         
+    }
+}
+
+extension ViewController {
+    
+    private func addCatScene() {
+        let scene = SCNScene(named: "art.scnassets/cat.scn")!
+        let node = scene.rootNode.childNode(withName: "Cat", recursively: true)!
+        node.position = SCNVector3(0, -1, -5)
+        self.sceneView.scene.rootNode.addChildNode(node)
+    }
+    
+    private func addPoopScene() {
+        let scene = SCNScene(named: "art.scnassets/nakpoop.scn")!
+        let node = scene.rootNode.childNode(withName: "Poop", recursively: true)!
+        node.position = SCNVector3(1, -1, -3)
+        self.sceneView.scene.rootNode.addChildNode(node)
     }
 }
